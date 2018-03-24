@@ -15,6 +15,8 @@ from janome.tokenizer import Tokenizer
 import urllib.request
 import csv
 
+#sort で使える
+from operator import itemgetter, attrgetter
 
 
 #ツイート取得数
@@ -31,6 +33,15 @@ def oauth_twitter():
 def tweet_dict():
     dict_temp = {'id':'', 'screen_name':'', 'favorite_count':0, 'text':''}
     return dict_temp
+
+class TwDataTmp:
+    def __init__(self, user_id, screen_name, favorite_count, url):
+        self.id = user_id
+        self.screen_name = screen_name
+        self.favorite_count = favorite_count
+        self.url = url
+    def __repr__(self):
+        return repr((self.id, self.screen_name, self.favorite_count, self.url))
 
 
 # ツイート投稿を実際に行ってくれる
@@ -53,8 +64,6 @@ def tw_search(search_word):
     twitter = oauth_twitter()
     req = twitter.get(url, params = params)
 
-
-    search_result = tweet_dict()
     return_results = []
 
     if req.status_code == 200:
@@ -62,10 +71,13 @@ def tw_search(search_word):
         for tweet in tweets['statuses']:
             #print(tweet['text'])
             #print('https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + str(tweet['id']))
-            search_result['id'] = tweet['id']
-            search_result['screen_name'] = tweet['user']['screen_name']
-            search_result['favorite_count'] = tweet['favorite_count']
-            search_result['text'] = tweet['text']
+
+            search_result =  TwDataTmp(
+                tweet['id'],
+                tweet['user']['screen_name'],
+                tweet['favorite_count'],
+                'https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + str(tweet['id'])
+            )
             return_results.append(copy.copy(search_result))
     else:
         print('Error: %d' % req.status_code)
@@ -79,17 +91,19 @@ def tw_get_favlist(screen_name):
     twitter = oauth_twitter()
     req = twitter.get(url, params = params)
 
-    fav_result = tweet_dict()
+    #fav_result = tweet_dict()
     return_results = []
 
     if req.status_code == 200:
         tweets = json.loads(req.text)
         for tweet in tweets:
             if tweet['favorite_count'] >= SINCE_FAV_NUM:
-                fav_result['id'] = tweet['id']
-                fav_result['screen_name'] = tweet['user']['screen_name']
-                fav_result['favorite_count'] = tweet['favorite_count']
-                fav_result['text'] = tweet['text']
+                fav_result = TwDataTmp(
+                    tweet['id'],
+                    tweet['user']['screen_name'],
+                    tweet['favorite_count'],
+                    'https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + str(tweet['id'])
+                )
                 return_results.append(copy.copy(fav_result))
     else:
         print ('Error: %d' % req.status_code)
@@ -147,17 +161,11 @@ def embed_tweet_info(embed_url):
 
 #cvs作成
 def twind_csv_database(tweets_list):
-    header = tweets_list[0].keys()
-
-    with open('C:/Users/sakajiri/Documents/ResourcesForPython/Twind/tweets_data.csv', 'w') as f:
-        writer = csv.writer(f, header, lineterminator='\n') # 改行コード（\n）を指定しておく
-        header_row = list(tweets_list[0].keys())
-        writer.writerow(header_row)
-        for i in tweets_list:
-            row = [i['id'], i['screen_name'], i['favorite_count']]
-            for column in range(len(row)):
-                row[column] = str(row[column])
-            writer.writerow(row)
+    with open(apiinfo.folder_map() + 'tweets_data.csv', 'w') as f:
+        writer = csv.writer(f, lineterminator='\n') # 改行コード（\n）を指定しておく
+        for row in tweets_list:
+            data = (row.id, row.screen_name, row.favorite_count)
+            writer.writerow(data)
 
 if __name__ == '__main__':
 
@@ -166,24 +174,26 @@ if __name__ == '__main__':
     print('\n------\nTwind Popoular Tweet Searcher beta\n------\n')
     
     #特定の単語について検索をかける
-    search_word = '新卒'
+    search_word = '卒業'
     print(search_word + ' に関するツイートを取得…')
     search_results = tw_search(search_word)
     #fav_tweets_list.extend(copy.copy(search_results))
     
     #検索結果で取得されたそれぞれのユーザーのお気に入りツイートのリストを取得
-    print('\n各ユーザーのお気に入りツイートリストを取得…')
-    print('お気に入り数が ', SINCE_FAV_NUM, ' 以下のツイートは取得されません。')
+    print('\n各ユーザーのお気に入りツイートリストを取得…\n例外設定：')
+    print('・お気に入り数が ', SINCE_FAV_NUM, ' 以下のツイート')
     for i in search_results:
-        fav_tweets_list.extend(copy.copy(tw_get_favlist(i['screen_name'])))
+        fav_tweets_list.extend(copy.copy(tw_get_favlist(i.screen_name)))
 
+    # 降順に並び替え
+    fav_tweets_list = sorted(fav_tweets_list, key=attrgetter('favorite_count'), reverse=True)
     
     #print(fav_tweets_list)
     print('\n取得ツイート:')
     for i in range(len(fav_tweets_list)):
         print('-----------------')
-        print('ふぁぼ数:', fav_tweets_list[i]['favorite_count'])
-        print(fav_tweets_list[i]['text'])
+        print('ふぁぼ数:', fav_tweets_list[i].favorite_count)
+        print(fav_tweets_list[i].url)
 
     if len(fav_tweets_list) > 0:
         twind_csv_database(fav_tweets_list)
@@ -192,8 +202,10 @@ if __name__ == '__main__':
     #post_tweet(tweet_text)
     #tokenizer('私はご飯を食べました')
 
-    embed_tweet = embed_tweet_info('https://twitter.com/chamenma/status/973970839916888065')
-    wp_twind.post(embed_tweet['html'])
+
+
+    #embed_tweet = embed_tweet_info('https://twitter.com/chamenma/status/973970839916888065')
+    #wp_twind.post(embed_tweet['html'])
     #tw_get_favlist('chamenma')
     #tw_get_reply('@' + ATAGOofficial',976829724000362496)
 
