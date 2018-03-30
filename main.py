@@ -23,7 +23,7 @@ from operator import itemgetter, attrgetter
 GET_TWEET_NUM = 3
 MAX_GET_TWEET_NUM = 100
 #ふぁぼの足切りポイント
-SINCE_FAV_NUM = 1000
+SINCE_FAV_NUM = 3000
 
 #OAuth認証
 def oauth_twitter():
@@ -107,11 +107,12 @@ def tw_get_favlist(screen_name):
                 return_results.append(copy.copy(fav_result))
     else:
         print ('Error: %d' % req.status_code)
-    print('お気に入り一覧取得 ユーザーID: ',screen_name)
+    print('完了 ユーザーID: ',screen_name)
     return return_results
 
 # 特定ツイートのリプライ取得
 # search APIを使って無理やり使う
+# 2018.03.30 関連ツイートは取得できるものの、有用なものにたどり着かない
 def tw_get_reply(screen_name, tweet_id):
     url = 'https://api.twitter.com/1.1/search/tweets.json'
     params = {'q': screen_name, 'lang': 'ja', 'count':MAX_GET_TWEET_NUM, 'since_id':tweet_id}
@@ -124,6 +125,7 @@ def tw_get_reply(screen_name, tweet_id):
     if req.status_code == 200:
         tweets = json.loads(req.text)
         for tweet in tweets['statuses']:
+            print(tweet['text'])
             if tweet['in_reply_to_status_id'] == tweet_id:
                 comment['text'] = tweet['text'].replace(screen_name + ' ', '')
                 comment['favorite_count'] = tweet['favorite_count']
@@ -174,7 +176,7 @@ if __name__ == '__main__':
     print('\n------\nTwind Popoular Tweet Searcher beta\n------\n')
     
     #特定の単語について検索をかける
-    search_word = '卒業'
+    search_word = '残業'
     print(search_word + ' に関するツイートを取得…')
     search_results = tw_search(search_word)
     #fav_tweets_list.extend(copy.copy(search_results))
@@ -190,16 +192,22 @@ if __name__ == '__main__':
     
     #print(fav_tweets_list)
     print('\n取得ツイート:')
+
+
     for i in range(len(fav_tweets_list)):
         print('-----------------')
         print('ふぁぼ数:', fav_tweets_list[i].favorite_count)
         print(fav_tweets_list[i].url)
+
+        embed_tweet = embed_tweet_info(fav_tweets_list[i].url)
+        wp_twind.post(embed_tweet['html'])
 
     if len(fav_tweets_list) > 0:
         twind_csv_database(fav_tweets_list)
 
     #tweet_text = create_tweet_text(search_word,most_ret_tweet)
     #post_tweet(tweet_text)
+    
     #tokenizer('私はご飯を食べました')
 
 
@@ -207,6 +215,6 @@ if __name__ == '__main__':
     #embed_tweet = embed_tweet_info('https://twitter.com/chamenma/status/973970839916888065')
     #wp_twind.post(embed_tweet['html'])
     #tw_get_favlist('chamenma')
-    #tw_get_reply('@' + ATAGOofficial',976829724000362496)
+    #tw_get_reply('AKAmagenta','979649591925551104')
 
     print('\n---終了しました---\n')
