@@ -15,6 +15,9 @@ from janome.tokenizer import Tokenizer
 import urllib.request
 import csv
 
+#正規表現を使えるモジュール
+import re
+
 #sort で使える
 from operator import itemgetter, attrgetter
 
@@ -35,13 +38,14 @@ def tweet_dict():
     return dict_temp
 
 class TwDataTmp:
-    def __init__(self, user_id, screen_name, favorite_count, url):
+    def __init__(self, user_id, screen_name, favorite_count, url, text):
         self.id = user_id
         self.screen_name = screen_name
         self.favorite_count = favorite_count
         self.url = url
+        self.text = text
     def __repr__(self):
-        return repr((self.id, self.screen_name, self.favorite_count, self.url))
+        return repr((self.id, self.screen_name, self.favorite_count, self.url, self.text))
 
 
 # ツイート投稿を実際に行ってくれる
@@ -76,7 +80,8 @@ def tw_search(search_word):
                 tweet['id'],
                 tweet['user']['screen_name'],
                 tweet['favorite_count'],
-                'https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + str(tweet['id'])
+                'https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + str(tweet['id']),
+                tweet['text']
             )
             return_results.append(copy.copy(search_result))
     else:
@@ -102,7 +107,8 @@ def tw_get_favlist(screen_name):
                     tweet['id'],
                     tweet['user']['screen_name'],
                     tweet['favorite_count'],
-                    'https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + str(tweet['id'])
+                    'https://twitter.com/' + tweet['user']['screen_name'] + '/status/' + str(tweet['id']),
+                    tweet['text']
                 )
                 return_results.append(copy.copy(fav_result))
     else:
@@ -149,8 +155,12 @@ def create_tweet_text(search_word,most_ret_tweet):
 def tokenizer(sentence):
     tokenizer = Tokenizer()
     tokens = tokenizer.tokenize(sentence)
-    for token in tokens:
-        print(token)
+    for token in tokens:                  # 表層形
+        #print(token)
+        if token.part_of_speech.split(',')[0] =='名詞' and token.part_of_speech.split(',')[1] == '一般':
+            #メタ表現してみたい
+            if re.match('[\a-xA-Z0-9_]',token.surface) == None :
+                print(token.surface, '\t')
 
 #Wordpressの記事に埋め込むためのTweet情報を取得
 def embed_tweet_info(embed_url):
@@ -183,7 +193,7 @@ if __name__ == '__main__':
     
     #検索結果で取得されたそれぞれのユーザーのお気に入りツイートのリストを取得
     print('\n各ユーザーのお気に入りツイートリストを取得…\n例外設定：')
-    print('・お気に入り数が ', SINCE_FAV_NUM, ' 以下のツイート')
+    print('・お気に入り数が ', SINCE_FAV_NUM, ' 以下のツイートは取得されません')
     for i in search_results:
         fav_tweets_list.extend(copy.copy(tw_get_favlist(i.screen_name)))
 
@@ -193,14 +203,15 @@ if __name__ == '__main__':
     #print(fav_tweets_list)
     print('\n取得ツイート:')
 
-
     for i in range(len(fav_tweets_list)):
         print('-----------------')
-        print('ふぁぼ数:', fav_tweets_list[i].favorite_count)
         print(fav_tweets_list[i].url)
+        print('ふぁぼ数:', fav_tweets_list[i].favorite_count)
+        print('本文\n' + fav_tweets_list[i].text)
+        tokenizer(fav_tweets_list[i].text)
 
-        embed_tweet = embed_tweet_info(fav_tweets_list[i].url)
-        wp_twind.post(embed_tweet['html'])
+        #embed_tweet = embed_tweet_info(fav_tweets_list[i].url)
+        #wp_twind.post(embed_tweet['html'])
 
     if len(fav_tweets_list) > 0:
         twind_csv_database(fav_tweets_list)
