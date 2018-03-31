@@ -153,6 +153,7 @@ def create_tweet_text(search_word,most_ret_tweet):
 
 # janomeを用いた形態素解析
 def tokenizer(sentence):
+    tag_list = []
     tokenizer = Tokenizer()
     tokens = tokenizer.tokenize(sentence)
     for token in tokens:                  # 表層形
@@ -161,6 +162,8 @@ def tokenizer(sentence):
             #メタ表現してみたい
             if re.match('[\a-xA-Z0-9_]',token.surface) == None :
                 print(token.surface, '\t')
+                tag_list.append(token.surface)
+    return tag_list
 
 #Wordpressの記事に埋め込むためのTweet情報を取得
 def embed_tweet_info(embed_url):
@@ -182,6 +185,7 @@ def twind_csv_database(tweets_list):
 if __name__ == '__main__':
 
     fav_tweets_list = []
+    tag_list = []
 
     print('\n------\nTwind Popoular Tweet Searcher beta\n------\n')
     
@@ -208,10 +212,10 @@ if __name__ == '__main__':
         print(fav_tweets_list[i].url)
         print('ふぁぼ数:', fav_tweets_list[i].favorite_count)
         print('本文\n' + fav_tweets_list[i].text)
-        tokenizer(fav_tweets_list[i].text)
+        tag_list = tokenizer(fav_tweets_list[i].text)
 
         #embed_tweet = embed_tweet_info(fav_tweets_list[i].url)
-        #wp_twind.post(embed_tweet['html'])
+        #wp_twind.post(embed_tweet['html'], tag_list)
 
     if len(fav_tweets_list) > 0:
         twind_csv_database(fav_tweets_list)
@@ -223,8 +227,8 @@ if __name__ == '__main__':
 
 
 
-    #embed_tweet = embed_tweet_info('https://twitter.com/chamenma/status/973970839916888065')
-    #wp_twind.post(embed_tweet['html'])
+    embed_tweet = embed_tweet_info('https://twitter.com/chamenma/status/973970839916888065')
+    wp_twind.post(embed_tweet['html'], tag_list)
     #tw_get_favlist('chamenma')
     #tw_get_reply('AKAmagenta','979649591925551104')
 
